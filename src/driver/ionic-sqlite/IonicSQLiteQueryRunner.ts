@@ -249,8 +249,6 @@ export class IonicSQLiteQueryRunner implements QueryRunner {
             throw new QueryRunnerAlreadyReleasedError();
 
         // if no tables given then no need to proceed
-        return [];
-/*
         if (!tableNames || !tableNames.length)
             return [];
 
@@ -358,7 +356,7 @@ export class IonicSQLiteQueryRunner implements QueryRunner {
             tableSchema.indices = indices.filter(index => !!index) as IndexSchema[];
 
             return tableSchema;
-        }));*/
+        }));
     }
 
     /**
@@ -584,9 +582,19 @@ export class IonicSQLiteQueryRunner implements QueryRunner {
         // recreate a table with a temporary name
         await this.query(sql1);
 
-        // migrate all data from the table into temporary table
-        const sql2 = `INSERT INTO "temporary_${tableSchema.name}" SELECT ${columnNames} FROM "${tableSchema.name}"`;
-        await this.query(sql2);
+        const firstDatas = await this.query(`SELECT * FROM "${tableSchema.name}"`);
+        if (firstDatas.length > 0) {
+          // migrate all data from the table into temporary table
+          let oldColumnNamesArr : string[] = [] ;
+          let newColumnNamesArr : string[] = tableSchema.columns.map(column => `${column.name}`);
+          for (const property in firstDatas[0]) {oldColumnNamesArr.push(`${property}`);}
+
+          const colInTwiceArr = oldColumnNamesArr.filter(x => {return newColumnNamesArr.indexOf(x) >= 0;});
+          const colInTwice = colInTwiceArr.map(x => `"${x}"`).join(", ");
+          const colInTwiceWithout = colInTwiceArr.join(", ");
+          const sql2 = `INSERT INTO "temporary_${tableSchema.name}" (${colInTwiceWithout}) SELECT ${colInTwice} FROM "${tableSchema.name}"`;
+          await this.query(sql2);
+        }
 
         // drop old table
         const sql3 = `DROP TABLE "${tableSchema.name}"`;

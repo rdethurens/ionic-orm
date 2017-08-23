@@ -241,120 +241,22 @@ export class WebSqlQueryRunner implements QueryRunner {
      * Loads all tables (with given names) from the database and creates a TableSchema from them.
      */
     async loadSchemaTables(tableNames: string[], namingStrategy: NamingStrategyInterface): Promise<TableSchema[]> {
-        if (this.isReleased)
-            throw new QueryRunnerAlreadyReleasedError();
-
-        // if no tables given then no need to proceed
-        return [];
-/*
-        if (!tableNames || !tableNames.length)
-            return [];
-
-        // load tables, columns, indices and foreign keys
-        const dbTables: ObjectLiteral[] = await this.query(`SELECT * FROM sqlite_master WHERE type = 'table' AND name != 'sqlite_sequence'`);
-
-        // if tables were not found in the db, no need to proceed
-        if (!dbTables || !dbTables.length)
-            return [];
-
-        // create table schemas for loaded tables
-        return Promise.all(dbTables.map(async dbTable => {
-            const tableSchema = new TableSchema(dbTable["name"]);
-
-            // load columns and indices
-            const [dbColumns, dbIndices, dbForeignKeys]: ObjectLiteral[][] = await Promise.all([
-                this.query(`PRAGMA table_info("${dbTable["name"]}")`),
-                this.query(`PRAGMA index_list("${dbTable["name"]}")`),
-                this.query(`PRAGMA foreign_key_list("${dbTable["name"]}")`),
-            ]);
-
-            // find column name with auto increment
-            let autoIncrementColumnName: string|undefined = undefined;
-            const tableSql: string = dbTable["sql"];
-            if (tableSql.indexOf("AUTOINCREMENT") !== -1) {
-                autoIncrementColumnName = tableSql.substr(0, tableSql.indexOf("AUTOINCREMENT"));
-                const comma = autoIncrementColumnName.lastIndexOf(",");
-                const bracket = autoIncrementColumnName.lastIndexOf("(");
-                if (comma !== -1) {
-                    autoIncrementColumnName = autoIncrementColumnName.substr(comma);
-                    autoIncrementColumnName = autoIncrementColumnName.substr(0, autoIncrementColumnName.lastIndexOf("\""));
-                    autoIncrementColumnName = autoIncrementColumnName.substr(autoIncrementColumnName.indexOf("\"") + 1);
-
-                } else if (bracket !== -1) {
-                    autoIncrementColumnName = autoIncrementColumnName.substr(bracket);
-                    autoIncrementColumnName = autoIncrementColumnName.substr(0, autoIncrementColumnName.lastIndexOf("\""));
-                    autoIncrementColumnName = autoIncrementColumnName.substr(autoIncrementColumnName.indexOf("\"") + 1);
-                }
-            }
-
-            // create column schemas from the loaded columns
-            tableSchema.columns = dbColumns.map(dbColumn => {
-                const columnSchema = new ColumnSchema();
-                columnSchema.name = dbColumn["name"];
-                columnSchema.type = dbColumn["type"].toLowerCase();
-                columnSchema.default = dbColumn["dflt_value"] !== null && dbColumn["dflt_value"] !== undefined ? dbColumn["dflt_value"] : undefined;
-                columnSchema.isNullable = dbColumn["notnull"] === 0;
-                columnSchema.isPrimary = dbColumn["pk"] === 1;
-                columnSchema.comment = ""; // todo later
-                columnSchema.isGenerated = autoIncrementColumnName === dbColumn["name"];
-                const columnForeignKeys = dbForeignKeys
-                    .filter(foreignKey => foreignKey["from"] === dbColumn["name"])
-                    .map(foreignKey => {
-                        const keyName = namingStrategy.foreignKeyName(dbTable["name"], [foreignKey["from"]], foreignKey["table"], [foreignKey["to"]]);
-                        return new ForeignKeySchema(keyName, [foreignKey["from"]], [foreignKey["to"]], foreignKey["table"], foreignKey["on_delete"]); // todo: how websql return from and to when they are arrays? (multiple column foreign keys)
-                    });
-                tableSchema.addForeignKeys(columnForeignKeys);
-                return columnSchema;
-            });
-
-            // create primary key schema
-            await Promise.all(dbIndices
-                .filter(index => index["origin"] === "pk")
-                .map(async index => {
-                    const indexInfos: ObjectLiteral[] = await this.query(`PRAGMA index_info("${index["name"]}")`);
-                    const indexColumns = indexInfos.map(indexInfo => indexInfo["name"]);
-                    indexColumns.forEach(indexColumn => {
-                        tableSchema.primaryKeys.push(new PrimaryKeySchema(index["name"], indexColumn));
-                    });
-                }));
-
-            // create index schemas from the loaded indices
-            const indicesPromises = dbIndices
-                .filter(dbIndex => {
-                    return  dbIndex["origin"] !== "pk" &&
-                        (!tableSchema.foreignKeys.find(foreignKey => foreignKey.name === dbIndex["name"])) &&
-                        (!tableSchema.primaryKeys.find(primaryKey => primaryKey.name === dbIndex["name"]));
-                })
-                .map(dbIndex => dbIndex["name"])
-                .filter((value, index, self) => self.indexOf(value) === index) // unqiue
-                .map(async dbIndexName => {
-                    const dbIndex = dbIndices.find(dbIndex => dbIndex["name"] === dbIndexName);
-                    const indexInfos: ObjectLiteral[] = await this.query(`PRAGMA index_info("${dbIndex!["name"]}")`);
-                    const indexColumns = indexInfos.map(indexInfo => indexInfo["name"]);
-
-                    // check if db index is generated by websql itself and has special use case
-                    if (dbIndex!["name"].substr(0, "sqlite_autoindex".length) === "sqlite_autoindex") {
-                        if (dbIndex!["unique"] === 1) { // this means we have a special index generated for a column
-                            // so we find and update the column
-                            indexColumns.forEach(columnName => {
-                                const column = tableSchema.columns.find(column => column.name === columnName);
-                                if (column)
-                                    column.isUnique = true;
-                            });
-                        }
-
-                        return Promise.resolve(undefined);
-
-                    } else {
-                        return new IndexSchema(dbTable["name"], dbIndex!["name"], indexColumns, dbIndex!["unique"] === "1");
-                    }
-                });
-
-            const indices = await Promise.all(indicesPromises);
-            tableSchema.indices = indices.filter(index => !!index) as IndexSchema[];
-
-            return tableSchema;
-        }));*/
+      if (this.isReleased)
+          throw new QueryRunnerAlreadyReleasedError();
+      // if no tables given then no need to proceed
+      if (!tableNames || !tableNames.length)
+          return [];
+      const tableNamesString = tableNames.map(tableName => `'${tableName}'`).join(", ");
+      // load tables, columns, indices and foreign keys
+      const dbTables: ObjectLiteral[] = await this.query(`SELECT * FROM sqlite_master WHERE type = 'table' AND name IN (${tableNamesString})`);
+      // if tables were not found in the db, no need to proceed
+      if (!dbTables || !dbTables.length)
+          return [];
+      // create table schemas for loaded tables
+      return Promise.all(dbTables.map(async dbTable => {
+          const tableSchema = new TableSchema(dbTable["name"]);
+          return tableSchema;
+      }));
     }
 
     /**
@@ -580,9 +482,19 @@ export class WebSqlQueryRunner implements QueryRunner {
         // recreate a table with a temporary name
         await this.query(sql1);
 
-        // migrate all data from the table into temporary table
-        const sql2 = `INSERT INTO "temporary_${tableSchema.name}" SELECT ${columnNames} FROM "${tableSchema.name}"`;
-        await this.query(sql2);
+        const firstDatas = await this.query(`SELECT * FROM "${tableSchema.name}"`);
+        if (firstDatas.length > 0) {
+          // migrate all data from the table into temporary table
+          let oldColumnNamesArr : string[] = [] ;
+          let newColumnNamesArr : string[] = tableSchema.columns.map(column => `${column.name}`);
+          for (const property in firstDatas[0]) {oldColumnNamesArr.push(`${property}`);}
+
+          const colInTwiceArr = oldColumnNamesArr.filter(x => {return newColumnNamesArr.indexOf(x) >= 0;});
+          const colInTwice = colInTwiceArr.map(x => `"${x}"`).join(", ");
+          const colInTwiceWithout = colInTwiceArr.join(", ");
+          const sql2 = `INSERT INTO "temporary_${tableSchema.name}" (${colInTwiceWithout}) SELECT ${colInTwice} FROM "${tableSchema.name}"`;
+          await this.query(sql2);
+        }
 
         // drop old table
         const sql3 = `DROP TABLE "${tableSchema.name}"`;
