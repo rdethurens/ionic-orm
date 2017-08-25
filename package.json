@@ -1,13 +1,13 @@
 {
-  "name": "ionic-orm",
+  "name": "ionic-orm3",
   "description": "Data-mapper ORM for Ionic WebSQL and SQLite",
   "private": false,
-  "version": "0.0.5",
+  "version": "0.1.0",
   "license": "MIT",
   "author": "Brady Liles <bradyliles@outlook.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/BradyLiles/ionic-orm.git"
+    "url": "git+https://github.com/rdethurens/ionic-orm"
   },
   "bugs": {
     "url": "https://github.com/BradyLiles/ionic-orm/issues"
@@ -35,7 +35,7 @@
     "lodash": "^4.16.4",
     "moment": "2.15.2"
   },
-  "homepage": "https://github.com/BradyLiles/ionic-orm#readme",
+  "homepage": "https://github.com/rdethurens/ionic-orm#readme",
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
